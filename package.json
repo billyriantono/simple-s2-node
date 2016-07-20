@@ -1,7 +1,7 @@
 {
   "name": "simple-s2-node",
   "version": "0.0.1",
-  "description": "Simple S2 Geometry Implementation in Node.JS ( Initial Code by MMM )",
+  "description": "Simple S2 Geometry Implementation in Node.JS ( Code by MMM )",
   "main": "s2.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

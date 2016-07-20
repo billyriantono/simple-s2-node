@@ -151,8 +151,8 @@ CellId.from_face_ij = function (face, i, j) {
   return new CellId(n.mul(2).add(1));
 };
 
-CellId.prototype.toLong = function () {
-  return Utils.long_from_bignum(this.id());
+CellId.prototype.toLong = function (signed) {
+  return Utils.long_from_bignum(this.id(), signed);
 }
 
 
