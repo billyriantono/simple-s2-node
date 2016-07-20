@@ -39,4 +39,4 @@ class Utils {
 	}
 }
 
-module.exports = exports = Utils;
+module.exports = exports = new Utils;

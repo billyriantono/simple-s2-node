@@ -75,10 +75,13 @@ function st_to_ij(s) {
 
 class CellId {
 	constructor(cellId){
-		if (cellId.lt(0))
-			cellId = cellId.add(bignum('10000000000000000', 16));
 		
-		this.cellId = cellId.mod(bignum('ffffffffffffffff', 16));
+		if( typeof cellId !== "undefined"){
+			if (cellId.lt(0))
+				cellId = cellId.add(bignum('10000000000000000', 16));
+			
+			this.cellId = cellId.mod(bignum('ffffffffffffffff', 16));
+		}
 	}
 
 	id() {
@@ -124,7 +127,7 @@ class CellId {
 	
 	
 	from_lat_lng(latLng) {
-		return CellId.from_point(latLng.to_point());
+		return this.from_point(latLng.to_point());
 	}
 	
 	from_point(point) {
@@ -134,7 +137,7 @@ class CellId {
 		var v = fuv[2];
 		var i = st_to_ij(uv_to_st(u));
 		var j = st_to_ij(uv_to_st(v));
-		return CellId.from_face_ij(face, i, j);
+		return this.from_face_ij(face, i, j);
 	}
 	
 	from_face_ij(face, i, j) {
