@@ -1,8 +1,8 @@
 'use strict'
-const bignum = require('bignum');
+const bignum = require('bn').BigInteger;
 const Long = require('long');
 
-const lowMask = bignum('ffffffff', 16);
+const lowMask = new bignum('ffffffff', 16);
 
 class Utils {
 	
@@ -35,7 +35,7 @@ class Utils {
 	}
 
 	long_from_bignum(bignum, signed) {
-		return new Long(bignum.and(lowMask).toNumber(), bignum.shiftRight(32).and(lowMask).toNumber(), signed ? false : true);
+		return new Long(bignum.and(lowMask).intValue(), bignum.shiftRight(32).and(lowMask).intValue(), signed ? false : true);
 	}
 }
 

@@ -1,4 +1,6 @@
-const bignum = require('bignum');
+'use strict'
+
+const bignum = require('bn').BigInteger;
 const Utils = require('./utils');
 
 const LINEAR_PROJECTION = 0;
@@ -75,12 +77,12 @@ function st_to_ij(s) {
 
 class CellId {
 	constructor(cellId){
-		
+
 		if( typeof cellId !== "undefined"){
-			if (cellId.lt(0))
-				cellId = cellId.add(bignum('10000000000000000', 16));
+			if (cellId.intValue() < 0)
+				cellId = cellId.add( new bignum('10000000000000000', 16));
 			
-			this.cellId = cellId.mod(bignum('ffffffffffffffff', 16));
+			this.cellId = cellId.mod(new bignum('ffffffffffffffff', 16));
 		}
 	}
 
@@ -89,12 +91,12 @@ class CellId {
 	}
 
 	lsb() {
-		if (this.cellId.eq(0))
-			return bignum(0);
+		if (this.cellId.toString() === "0")
+			return bignum.ZERO;
 		
-		var lsb = bignum(1);
+		var lsb = bignum.ONE;
 		do {
-			if (!this.cellId.and(lsb).eq(0))
+			if (!this.cellId.and(lsb).toString() === "0")
 				return lsb;
 			
 			lsb = lsb.shiftLeft(1);
@@ -132,16 +134,18 @@ class CellId {
 	
 	from_point(point) {
 		var fuv = Utils.xyz_to_face_uv(point);
+		
 		var face = fuv[0];
 		var u = fuv[1];
 		var v = fuv[2];
 		var i = st_to_ij(uv_to_st(u));
 		var j = st_to_ij(uv_to_st(v));
+		
 		return this.from_face_ij(face, i, j);
 	}
 	
 	from_face_ij(face, i, j) {
-		var n = bignum(face).shiftLeft(POS_BITS - 1);//face << (POS_BITS - 1);
+		var n = (new bignum(String(face))).shiftLeft(POS_BITS - 1);//face << (POS_BITS - 1);
 		var bits = face & SWAP_MASK;
 		
 		for (var k = 7; k > -1; k--) {// in range(7, -1, -1):
@@ -149,11 +153,16 @@ class CellId {
 			bits += (((i >> (k * LOOKUP_BITS)) & mask) << (LOOKUP_BITS + 2));
 			bits += (((j >> (k * LOOKUP_BITS)) & mask) << 2);
 			bits = LOOKUP_POS[bits];
-			n = n.or(bignum(bits).shiftRight(2).shiftLeft(k * 2 * LOOKUP_BITS));//n |= (bits >> 2) << (k * 2 * LOOKUP_BITS);
+			n = n.or(  ( new bignum(String(bits))).shiftRight(2).shiftLeft(k * 2 * LOOKUP_BITS));//n |= (bits >> 2) << (k * 2 * LOOKUP_BITS);
 			bits &= (SWAP_MASK | INVERT_MASK);
 		}
+
+		// when using BigInteger we get a number that is +1 larger that the result
+		// we got while using binary openssl functions from "bignum" package.
+		// that's why 'add(new bignum("1")' was removed.
 		
-		return new CellId(n.mul(2).add(1));
+		//return new CellId(n.multiply( new bignum("2"))/*.add(new bignum("1"))*/);
+		return new CellId(n.multiply( new bignum("2")) );
 	}
 	
 	toLong(signed) {
