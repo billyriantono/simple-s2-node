@@ -1,0 +1,14 @@
+{
+  "extends": "node-style-guide",
+  "parserOptions": {
+    "ecmaVersion": 5,
+    "sourceType": "script"
+  },
+  "env": {
+    "node": true
+  },
+  "rules": {
+    "space-after-keywords": "off",
+    "keyword-spacing": [2, {"before": true, "after": true}]
+  }
+}
