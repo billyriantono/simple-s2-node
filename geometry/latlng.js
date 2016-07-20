@@ -1,22 +1,23 @@
 const Point = require('./point');
 const Utils = require('./utils');
 
-var LatLng = function (lat, lng) {
-  //in radians
+class LatLng {
+	constructor(lat, lng){
+		//in radians
+		
+		this.lat = lat;
+		this.lng = lng;
+	}
 
-  this.lat = lat;
-  this.lng = lng;
+	to_point() {
+		let {lat, lng} = this;
+		let cosphi = Math.cos(lat);
+		return new Point(Math.cos(lng) * cosphi, Math.sin(lng) * cosphi, Math.sin(lat));
+	}
+
+	from_degrees(lat, lng) {
+		return new LatLng(Utils.toRadians(lat), Utils.toRadians(lng));
+	}
 }
-
-LatLng.prototype.to_point = function () {
-  var phi = this.lat;
-  var theta = this.lng;
-  var cosphi = Math.cos(phi);
-  return new Point(Math.cos(theta) * cosphi, Math.sin(theta) * cosphi, Math.sin(phi));
-};
-
-LatLng.from_degrees = function (lat, lng) {
-  return new LatLng(Utils.toRadians(lat), Utils.toRadians(lng));
-};
 
 module.exports = exports = LatLng;
