@@ -81,7 +81,7 @@ class CellId {
 		if( typeof cellId !== "undefined"){
 			if (cellId.intValue() < 0)
 				cellId = cellId.add( new bignum('10000000000000000', 16));
-			
+
 			this.cellId = cellId.mod(new bignum('ffffffffffffffff', 16));
 		}
 	}
@@ -93,28 +93,28 @@ class CellId {
 	lsb() {
 		if (this.cellId.toString() === "0")
 			return bignum.ZERO;
-		
+
 		var lsb = bignum.ONE;
 		do {
-			if (!this.cellId.and(lsb).toString() === "0")
+			if (this.cellId.and(lsb).toString() !== "0")
 				return lsb;
-			
+
 			lsb = lsb.shiftLeft(1);
 		} while (true);
-		
+
 		//return this.cellId & (-this.cellId);
 	}
 
 	prev() {
-		return new CellId(this.cellId.sub(this.lsb().shiftLeft(1)));
+		return new CellId(this.cellId.subtract(this.lsb().shiftLeft(1)));
 	}
-	
+
 	next() {
 		return new CellId(this.cellId.add(this.lsb().shiftLeft(1)));
 	}
 
 	lsb_for_level(level) {
-		return 1 << (2 * (MAX_LEVEL - level));
+		return new bignum("1").shiftLeft(2 * (MAX_LEVEL - level));
 	}
 
 	lsb_shift_for_level(level) {
@@ -126,28 +126,28 @@ class CellId {
 		var new_lsb_shift = this.lsb_shift_for_level(level);
 		return new CellId(this.cellId.shiftRight(new_lsb_shift).shiftLeft(new_lsb_shift).or(new_lsb));//return new CellId((this.cellId & (-new_lsb)) | new_lsb);
 	}
-	
-	
+
+
 	from_lat_lng(latLng) {
 		return this.from_point(latLng.to_point());
 	}
-	
+
 	from_point(point) {
 		var fuv = Utils.xyz_to_face_uv(point);
-		
+
 		var face = fuv[0];
 		var u = fuv[1];
 		var v = fuv[2];
 		var i = st_to_ij(uv_to_st(u));
 		var j = st_to_ij(uv_to_st(v));
-		
+
 		return this.from_face_ij(face, i, j);
 	}
-	
+
 	from_face_ij(face, i, j) {
 		var n = (new bignum(String(face))).shiftLeft(POS_BITS - 1);//face << (POS_BITS - 1);
 		var bits = face & SWAP_MASK;
-		
+
 		for (var k = 7; k > -1; k--) {// in range(7, -1, -1):
 			var mask = (1 << LOOKUP_BITS) - 1;
 			bits += (((i >> (k * LOOKUP_BITS)) & mask) << (LOOKUP_BITS + 2));
@@ -160,11 +160,11 @@ class CellId {
 		// when using BigInteger we get a number that is +1 larger that the result
 		// we got while using binary openssl functions from "bignum" package.
 		// that's why 'add(new bignum("1")' was removed.
-		
+
 		//return new CellId(n.multiply( new bignum("2"))/*.add(new bignum("1"))*/);
 		return new CellId(n.multiply( new bignum("2")) );
 	}
-	
+
 	toLong(signed) {
 		return Utils.long_from_bignum(this.id(), signed);
 	}
