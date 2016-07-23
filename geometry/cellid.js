@@ -165,7 +165,11 @@ class CellId {
 
 	parent(level) {
 		var new_lsb = this.lsb_for_level(level);
-		return new CellId(this.cellId.and(new_lsb.negate()).or(new_lsb).subtract(bignum.ONE));
+		var parent = this.cellId.and(new_lsb.negate()).or(new_lsb);
+		if (this.level() === 30) {
+			parent = parent.subtract(bignum.ONE);
+		}
+		return new CellId(parent);
 	}
 
 
