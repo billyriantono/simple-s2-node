@@ -134,7 +134,6 @@ class CellId {
 	  // min_steps and max_steps always fit in a signed 64-bit integer.
 
 		steps = new bignum(steps+'');
-		console.log(steps.toString());
 	  var step_shift = 2 * (MAX_LEVEL - this.level()) + 1;
 	  if (parseInt(steps.toString(), 10) < 0) {
 	    var min_steps = this.cellId.shiftRight(step_shift).negate() //-static_cast<int64>(id_ >> step_shift);
