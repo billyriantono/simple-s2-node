@@ -127,7 +127,7 @@ class CellId {
 	}
 
 	advance(steps) {
-	  if (steps == 0) return new CellId(this.cellId);
+	  if (steps == 0) return this.cellId.clone();
 
 	  // We clamp the number of steps if necessary to ensure that we do not
 	  // advance past the End() or before the Begin() of this level.  Note that
@@ -146,11 +146,17 @@ class CellId {
 	}
 
 	prev() {
-		return this.advance(-1);
+		var level = this.level();
+		var prev = this.advance(-1);
+		if (prev.level() !== level) prev = prev.parent(level);
+		return prev;
 	}
 
 	next() {
-		return this.advance(1);
+		var level = this.level();
+		var next = this.advance(1);
+		if (next.level() !== level) next = next.parent(level);
+		return next;
 	}
 
 	lsb_for_level(level) {
