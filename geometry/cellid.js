@@ -14,8 +14,10 @@ const SWAP_MASK = 0x01;
 const INVERT_MASK = 0x02;
 
 const MAX_LEVEL = 30;
+const NUM_FACES = 6;
 const POS_BITS = 2 * MAX_LEVEL + 1;
 const MAX_SIZE = 1 << MAX_LEVEL;
+const WRAP_OFFSET = new bignum(NUM_FACES+'').shiftLeft(POS_BITS);
 
 const POS_TO_IJ = [
 	[0, 1, 3, 2],
@@ -105,26 +107,69 @@ class CellId {
 		//return this.cellId & (-this.cellId);
 	}
 
+	level() {
+		var x = new bignum(this.cellId.toString());
+	  var level = -1;
+	  if (x.toString() !== "0") {
+	    level += 16;
+	  } else {
+	    x = x.shiftRight(32);
+	  }
+	  // We only need to look at even-numbered bits to determine the
+	  // level of a valid cell id.
+		x = x.and(x.negate());
+	  if (x.and(new bignum("21845")).toString() !== "0") level += 8;
+		if (x.and(new bignum("5570645")).toString() !== "0") level += 4;
+		if (x.and(new bignum("84215045")).toString() !== "0") level += 2;
+		if (x.and(new bignum("286331153")).toString() !== "0") level += 1;
+		level = Math.max(Math.min(level, MAX_LEVEL), 0);
+	  return level;
+	}
+
+	advance(steps) {
+	  if (steps == 0) return this.cellId.clone();
+
+	  // We clamp the number of steps if necessary to ensure that we do not
+	  // advance past the End() or before the Begin() of this level.  Note that
+	  // min_steps and max_steps always fit in a signed 64-bit integer.
+
+		steps = new bignum(steps+'');
+	  var step_shift = 2 * (MAX_LEVEL - this.level()) + 1;
+	  if (parseInt(steps.toString(), 10) < 0) {
+	    var min_steps = this.cellId.shiftRight(step_shift).negate() //-static_cast<int64>(id_ >> step_shift);
+	    if (steps.compareTo(min_steps) === -1) steps = min_steps;
+	  } else {
+	    var max_steps = WRAP_OFFSET.add(this.lsb()).subtract(this.cellId).shiftRight(step_shift);
+	    if (steps.compareTo(max_steps) === 1) steps = max_steps;
+	  }
+	  return new CellId(this.cellId.add(steps.shiftLeft(step_shift)));
+	}
+
 	prev() {
-		return new CellId(this.cellId.subtract(this.lsb().shiftLeft(1)));
+		var level = this.level();
+		var prev = this.advance(-1);
+		if (prev.level() !== level) prev = prev.parent(level);
+		return prev;
 	}
 
 	next() {
-		return new CellId(this.cellId.add(this.lsb().shiftLeft(1)));
+		var level = this.level();
+		var next = this.advance(1);
+		if (next.level() !== level) next = next.parent(level);
+		return next;
 	}
 
 	lsb_for_level(level) {
 		return new bignum("1").shiftLeft(2 * (MAX_LEVEL - level));
 	}
 
-	lsb_shift_for_level(level) {
-		return (2 * (MAX_LEVEL - level));
-	}
-
 	parent(level) {
 		var new_lsb = this.lsb_for_level(level);
-		var new_lsb_shift = this.lsb_shift_for_level(level);
-		return new CellId(this.cellId.shiftRight(new_lsb_shift).shiftLeft(new_lsb_shift).or(new_lsb));//return new CellId((this.cellId & (-new_lsb)) | new_lsb);
+		var parent = this.cellId.and(new_lsb.negate()).or(new_lsb);
+		if (this.level() === 30) {
+			parent = parent.subtract(bignum.ONE);
+		}
+		return new CellId(parent);
 	}
 
 
