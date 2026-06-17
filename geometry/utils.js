@@ -1,11 +1,7 @@
-'use strict'
-const bignum = require('bn').BigInteger;
-const Long = require('long');
-
-const lowMask = new bignum('ffffffff', 16);
+'use strict';
 
 class Utils {
-	
+
 	toRadians(degrees) {
 		return degrees * Math.PI / 180;
 	}
@@ -34,8 +30,11 @@ class Utils {
 		return [face].concat(uv);
 	}
 
-	long_from_bignum(bignum, signed) {
-		return new Long(bignum.and(lowMask).intValue(), bignum.shiftRight(32).and(lowMask).intValue(), signed ? false : true);
+	// Converts a 64-bit cell id (BigInt) into a 64-bit integer value.
+	// Pass signed = true for the signed two's-complement interpretation,
+	// otherwise the value is treated as an unsigned 64-bit integer.
+	long_from_bignum(value, signed) {
+		return signed ? BigInt.asIntN(64, value) : BigInt.asUintN(64, value);
 	}
 }
 

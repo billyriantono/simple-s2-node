@@ -13,7 +13,7 @@ class Point {
 	largest_abs_component() {
 		var temp = this.abs();
 		if (temp.components[0] > temp.components[1]) {
-			return (temp.components[0] > temp[2]) ? 0 : 2;
+			return (temp.components[0] > temp.components[2]) ? 0 : 2;
 		}
 		else {
 			return (temp.components[1] > temp.components[2]) ? 1 : 2;

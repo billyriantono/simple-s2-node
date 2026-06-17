@@ -1,14 +1,13 @@
 {
-  "extends": "node-style-guide",
   "parserOptions": {
-    "ecmaVersion": 5,
+    "ecmaVersion": 2022,
     "sourceType": "script"
   },
   "env": {
-    "node": true
+    "node": true,
+    "es2022": true
   },
   "rules": {
-    "space-after-keywords": "off",
     "keyword-spacing": [2, {"before": true, "after": true}]
   }
 }

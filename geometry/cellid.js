@@ -1,6 +1,5 @@
-'use strict'
+'use strict';
 
-const bignum = require('bn').BigInteger;
 const Utils = require('./utils');
 
 const LINEAR_PROJECTION = 0;
@@ -17,7 +16,7 @@ const MAX_LEVEL = 30;
 const NUM_FACES = 6;
 const POS_BITS = 2 * MAX_LEVEL + 1;
 const MAX_SIZE = 1 << MAX_LEVEL;
-const WRAP_OFFSET = new bignum(NUM_FACES+'').shiftLeft(POS_BITS);
+const WRAP_OFFSET = BigInt(NUM_FACES) << BigInt(POS_BITS);
 
 const POS_TO_IJ = [
 	[0, 1, 3, 2],
@@ -77,14 +76,17 @@ function st_to_ij(s) {
 	return Math.max(0, Math.min(MAX_SIZE - 1, Math.floor(MAX_SIZE * s)));
 };
 
+// Normalize any value (BigInt, number or numeric string) into an unsigned
+// 64-bit BigInt, matching S2's wrap-around semantics for out-of-range ids.
+function to_u64(value) {
+	return BigInt.asUintN(64, BigInt(value));
+}
+
 class CellId {
 	constructor(cellId){
 
 		if( typeof cellId !== "undefined"){
-			if (cellId.intValue() < 0)
-				cellId = cellId.add( new bignum('10000000000000000', 16));
-
-			this.cellId = cellId.mod(new bignum('ffffffffffffffff', 16));
+			this.cellId = to_u64(cellId);
 		}
 	}
 
@@ -93,56 +95,42 @@ class CellId {
 	}
 
 	lsb() {
-		if (this.cellId.toString() === "0")
-			return bignum.ZERO;
+		if (this.cellId === 0n)
+			return 0n;
 
-		var lsb = bignum.ONE;
-		do {
-			if (this.cellId.and(lsb).toString() !== "0")
-				return lsb;
-
-			lsb = lsb.shiftLeft(1);
-		} while (true);
-
-		//return this.cellId & (-this.cellId);
+		// Lowest set bit: x & -x (BigInt uses two's-complement bit semantics).
+		return this.cellId & (-this.cellId);
 	}
 
 	level() {
-		var x = new bignum(this.cellId.toString());
-	  var level = -1;
-	  if (x.toString() !== "0") {
-	    level += 16;
-	  } else {
-	    x = x.shiftRight(32);
-	  }
-	  // We only need to look at even-numbered bits to determine the
-	  // level of a valid cell id.
-		x = x.and(x.negate());
-	  if (x.and(new bignum("21845")).toString() !== "0") level += 8;
-		if (x.and(new bignum("5570645")).toString() !== "0") level += 4;
-		if (x.and(new bignum("84215045")).toString() !== "0") level += 2;
-		if (x.and(new bignum("286331153")).toString() !== "0") level += 1;
-		level = Math.max(Math.min(level, MAX_LEVEL), 0);
-	  return level;
+		// The lsb of a valid cell id is 1 << (2 * (MAX_LEVEL - level)), so the
+		// level is MAX_LEVEL minus half the number of trailing zero bits.
+		var lsb = this.lsb();
+		var level = MAX_LEVEL;
+		while (lsb > 1n) {
+			lsb >>= 2n;
+			level--;
+		}
+		return Math.max(Math.min(level, MAX_LEVEL), 0);
 	}
 
 	advance(steps) {
-	  if (steps == 0) return this.cellId.clone();
+		if (steps == 0) return new CellId(this.cellId);
 
-	  // We clamp the number of steps if necessary to ensure that we do not
-	  // advance past the End() or before the Begin() of this level.  Note that
-	  // min_steps and max_steps always fit in a signed 64-bit integer.
+		// We clamp the number of steps if necessary to ensure that we do not
+		// advance past the End() or before the Begin() of this level.  Note that
+		// min_steps and max_steps always fit in a signed 64-bit integer.
 
-		steps = new bignum(steps+'');
-	  var step_shift = 2 * (MAX_LEVEL - this.level()) + 1;
-	  if (parseInt(steps.toString(), 10) < 0) {
-	    var min_steps = this.cellId.shiftRight(step_shift).negate() //-static_cast<int64>(id_ >> step_shift);
-	    if (steps.compareTo(min_steps) === -1) steps = min_steps;
-	  } else {
-	    var max_steps = WRAP_OFFSET.add(this.lsb()).subtract(this.cellId).shiftRight(step_shift);
-	    if (steps.compareTo(max_steps) === 1) steps = max_steps;
-	  }
-	  return new CellId(this.cellId.add(steps.shiftLeft(step_shift)));
+		steps = BigInt(steps);
+		var step_shift = BigInt(2 * (MAX_LEVEL - this.level()) + 1);
+		if (steps < 0n) {
+			var min_steps = -(this.cellId >> step_shift); //-static_cast<int64>(id_ >> step_shift);
+			if (steps < min_steps) steps = min_steps;
+		} else {
+			var max_steps = (WRAP_OFFSET + this.lsb() - this.cellId) >> step_shift;
+			if (steps > max_steps) steps = max_steps;
+		}
+		return new CellId(this.cellId + (steps << step_shift));
 	}
 
 	prev() {
@@ -160,16 +148,12 @@ class CellId {
 	}
 
 	lsb_for_level(level) {
-		return new bignum("1").shiftLeft(2 * (MAX_LEVEL - level));
+		return 1n << BigInt(2 * (MAX_LEVEL - level));
 	}
 
 	parent(level) {
 		var new_lsb = this.lsb_for_level(level);
-		var parent = this.cellId.and(new_lsb.negate()).or(new_lsb);
-		if (this.level() === 30) {
-			parent = parent.subtract(bignum.ONE);
-		}
-		return new CellId(parent);
+		return new CellId((this.cellId & (-new_lsb)) | new_lsb);
 	}
 
 
@@ -190,7 +174,7 @@ class CellId {
 	}
 
 	from_face_ij(face, i, j) {
-		var n = (new bignum(String(face))).shiftLeft(POS_BITS - 1);//face << (POS_BITS - 1);
+		var n = BigInt(face) << BigInt(POS_BITS - 1);//face << (POS_BITS - 1);
 		var bits = face & SWAP_MASK;
 
 		for (var k = 7; k > -1; k--) {// in range(7, -1, -1):
@@ -198,16 +182,14 @@ class CellId {
 			bits += (((i >> (k * LOOKUP_BITS)) & mask) << (LOOKUP_BITS + 2));
 			bits += (((j >> (k * LOOKUP_BITS)) & mask) << 2);
 			bits = LOOKUP_POS[bits];
-			n = n.or(  ( new bignum(String(bits))).shiftRight(2).shiftLeft(k * 2 * LOOKUP_BITS));//n |= (bits >> 2) << (k * 2 * LOOKUP_BITS);
+			n = n | ((BigInt(bits) >> 2n) << BigInt(k * 2 * LOOKUP_BITS));//n |= (bits >> 2) << (k * 2 * LOOKUP_BITS);
 			bits &= (SWAP_MASK | INVERT_MASK);
 		}
 
-		// when using BigInteger we get a number that is +1 larger that the result
-		// we got while using binary openssl functions from "bignum" package.
-		// that's why 'add(new bignum("1")' was removed.
-
-		//return new CellId(n.multiply( new bignum("2"))/*.add(new bignum("1"))*/);
-		return new CellId(n.multiply( new bignum("2")) );
+		// A leaf cell id carries a trailing "1" bit (its lsb) that marks the
+		// level. The legacy "bn" library happened to produce this off-by-one
+		// implicitly; with exact native BigInt math we add it explicitly.
+		return new CellId(n * 2n + 1n);
 	}
 
 	toLong(signed) {
